@@ -1,0 +1,12 @@
+diff --git a/apps/api/src/controllers/auth.ts b/apps/api/src/controllers/auth.ts
+--- a/apps/api/src/controllers/auth.ts
++++ b/apps/api/src/controllers/auth.ts
+@@ -96,7 +96,7 @@ const mockACUC: () => AuthCreditUsageChunk = () => ({
+   api_key_id: 0,
+   team_id: "bypass",
+   org_id: "bypass",
+-  flags: null,
++  flags: { ignoreRobots: "forced" },
+   is_banned: false,
+   is_extract: false,
+ });

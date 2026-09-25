@@ -1,0 +1,24 @@
+{% for job in jobs %}
+<article class="job-card {% if job.is_saved %}is-saved{% endif %} {% if job.availability_status == 'inactive' %}is-inactive{% endif %}" aria-labelledby="job-title-{{ job.id }}">
+  <div class="company-avatar" aria-hidden="true">{{ job.company_initials }}</div>
+  <div class="job-main">
+    <header class="job-card-header">
+      <div>
+        <label class="job-select"><input type="checkbox" name="job_ids" value="{{ job.id }}" {% if job.availability_status == 'inactive' %}disabled{% endif %}> {{ t('Für Bewerbungsentwurf auswählen') }}</label>
+        <h3 id="job-title-{{ job.id }}"><a href="{{ request.url_for('web_job_detail', job_id=job.id) }}">{{ job.title }}</a></h3>
+        <p class="job-company"><span>{{ t('Arbeitgeber') }}</span><strong>{{ job.company }}</strong></p>
+        <p class="job-location">{{ job.location }}</p>
+        {% if job.availability_status == 'inactive' %}<p class="notice danger">{{ t('Anzeige nicht mehr verfügbar') }}</p>{% elif job.availability_status == 'check_failed' %}<p class="notice warning">{{ t('Verfügbarkeit zuletzt nicht bestätigt') }}</p>{% endif %}
+      </div>
+      <div class="score-summary" aria-label="{{ t('Bewertungen') }}">
+        <span><strong>{{ job.role_score }} %</strong>{{ t('Aufgabennähe') }}</span>
+        <span><strong>{{ job.fit_score }} %</strong>{{ t('Kandidatenpassung') }}</span>
+      </div>
+    </header>
+    <div class="tag-row"><span class="tag {{ job.workplace_class }}">{{ job.workplace }}</span><span class="tag">{{ job.employment }}</span><span class="tag">{{ job.contract }}</span>{% if job.is_strategic %}<span class="tag accent">{{ t('Strategisch erweitert') }}</span>{% endif %}{% if job.is_new %}<span class="tag accent">{{ t('Neu') }}</span>{% endif %}</div>
+    {% if job.description_excerpt %}<p class="job-excerpt">{{ job.description_excerpt }}</p>{% endif %}
+    {% if show_match_reason %}<div class="match-summary"><strong>{{ t('Warum angezeigt') }}</strong><p>{{ job.reason }}</p></div>{% endif %}
+    <footer class="job-footer"><span>{{ job.published_label }}</span><span>{{ job.source_label }}</span><a class="button secondary" href="{{ request.url_for('web_job_detail', job_id=job.id) }}">{{ t('Stelle öffnen') }} <span aria-hidden="true">→</span></a></footer>
+  </div>
+</article>
+{% endfor %}

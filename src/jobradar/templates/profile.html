@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Mein Profil') }} · GF-Jobradar{% endblock %}
+{% block content %}
+<header class="page-header"><p class="eyebrow">{{ t('Persönliche Grundlage') }}</p><h1>{{ t('Mein Profil') }}</h1><p class="lede">{{ t('Damit der Jobradar erkennt, welche Stellen fachlich und persönlich zu dir passen.') }}</p></header>
+<div class="tab-bar" role="tablist" aria-label="{{ t('Profilbereiche') }}"><button role="tab" aria-selected="{{ 'false' if preferences_open else 'true' }}" aria-controls="qualifications" id="tab-qualifications">{{ t('Qualifikationen') }}</button><button role="tab" aria-selected="{{ 'true' if preferences_open else 'false' }}" aria-controls="preferences" id="tab-preferences">{{ t('Stellenwünsche') }}</button></div>
+{% if error_message %}<div class="notice danger" role="alert">{{ error_message }}</div>{% endif %}
+<form class="profile-form" method="post" enctype="multipart/form-data" action="{{ request.url_for('profile_save') }}">
+  <section class="card tab-panel" id="qualifications" role="tabpanel" aria-labelledby="tab-qualifications" {% if preferences_open %}hidden{% endif %}>
+    <div class="card-header"><div><p class="eyebrow">{{ t('Objektive Angaben') }}</p><h2>{{ t('Erfahrung und Fähigkeiten') }}</h2></div><span class="completion-badge">{{ t('{completion} % vollständig', completion=profile.completion) }}</span></div>
+    <div class="form-grid two-column">
+      <div><label for="full_name">{{ t('Name') }}</label><input id="full_name" name="full_name" value="{{ profile.full_name }}" autocomplete="name"></div>
+      <div><label for="current_title">{{ t('Aktuelle Tätigkeit') }}</label><input id="current_title" name="current_title" value="{{ profile.current_title }}"></div>
+      <div><label for="email">{{ t('E-Mail') }}</label><input id="email" name="email" type="email" value="{{ profile.email }}" autocomplete="email"></div>
+      <div><label for="phone">{{ t('Telefon') }}</label><input id="phone" name="phone" value="{{ profile.phone }}" autocomplete="tel"></div>
+      <div class="address-group" data-address-list data-max-addresses="{{ profile.max_addresses }}" data-address-label-template="{{ t('Startadresse {number}', number='__NUMBER__') }}">
+        <label id="addresses-label">{{ t('Startadressen für Pendelzeiten') }}</label>
+        <div class="address-rows" data-address-rows>
+          {% for address in profile.addresses %}
+          <div class="address-row" data-address-row>
+            <label class="sr-only" for="address-{{ loop.index }}">{{ t('Startadresse {number}', number=loop.index) }}</label>
+            <input id="address-{{ loop.index }}" name="addresses" value="{{ address }}" maxlength="500" autocomplete="{% if loop.first %}street-address{% else %}off{% endif %}" aria-label="{{ t('Startadresse {number}', number=loop.index) }}">
+            <button class="button secondary address-remove" type="button" data-address-remove aria-label="{{ t('Adresse entfernen') }}" title="{{ t('Adresse entfernen') }}" {% if profile.addresses|length == 1 %}hidden{% endif %}><span aria-hidden="true">×</span></button>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="address-actions"><button class="button secondary" type="button" data-address-add><span aria-hidden="true">+</span> {{ t('Adresse hinzufügen') }}</button></div>
+        <small>{{ t('Du kannst mehrere Startadressen angeben. Die erste ist die Hauptadresse. Alle bleiben lokal und werden nicht an OpenAI gesendet.') }}</small>
+        <template data-address-template>
+          <div class="address-row" data-address-row>
+            <label class="sr-only"></label>
+            <input name="addresses" maxlength="500" autocomplete="off">
+            <button class="button secondary address-remove" type="button" data-address-remove aria-label="{{ t('Adresse entfernen') }}" title="{{ t('Adresse entfernen') }}"><span aria-hidden="true">×</span></button>
+          </div>
+        </template>
+      </div>
+      <div><label for="experience_years">{{ t('Berufserfahrung') }}</label><div class="input-suffix"><input id="experience_years" name="experience_years" type="number" min="0" max="60" value="{{ profile.experience_years }}"><span>{{ t('Jahre') }}</span></div></div>
+      <div><label for="languages">{{ t('Sprachen') }}</label><input id="languages" name="languages" value="{{ profile.languages }}" placeholder="{{ t('z. B. Deutsch, Englisch') }}"></div>
+    </div>
+    <label for="skills">{{ t('Wichtige Fähigkeiten') }}</label><textarea id="skills" name="skills" rows="4" placeholder="{{ t('z. B. Terminorganisation, Korrespondenz, Projektkoordination') }}">{{ profile.skills }}</textarea>
+    <div
+      class="upload-area{% if profile.cv_filename %} accepted{% endif %}"
+      data-cv-upload
+      data-cv-state="{{ 'accepted' if profile.cv_filename else 'empty' }}"
+      data-selected-title="{{ t('Datei ausgewählt') }}"
+      data-selected-detail-template="{{ t('{filename} ist ausgewählt. Speichere dein Profil, um die Datei einzulesen.', filename='__FILENAME__') }}"
+      data-selected-action="{{ t('Andere Datei auswählen') }}"
+    >
+      <div class="upload-icon" data-cv-icon aria-hidden="true">{{ '✓' if profile.cv_filename else '⇧' }}</div>
+      <div class="upload-copy" aria-live="polite">
+        <div class="upload-title-row">
+          <strong data-cv-title>{% if profile.cv_filename %}{{ profile.cv_filename }}{% else %}{{ t('Lebenslauf hinzufügen') }}{% endif %}</strong>
+          <span class="upload-status" data-cv-status {% if not profile.cv_filename %}hidden{% endif %}><span aria-hidden="true">✓</span> {{ t('Akzeptiert') }}</span>
+        </div>
+        <p data-cv-detail>{% if profile.cv_filename %}{{ t('Der Lebenslauf wurde erfolgreich eingelesen.') }}{% else %}{{ t('PDF oder DOCX. Erkannte Angaben werden dir vor der Übernahme gezeigt.') }}{% endif %}</p>
+      </div>
+      <label class="button secondary" for="cv" data-cv-action>{% if profile.cv_filename %}{{ t('Erneut hochladen') }}{% else %}{{ t('Datei auswählen') }}{% endif %}</label>
+      <input class="sr-only" id="cv" name="cv" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    </div>
+    {% if profile.cv_evidence %}<details class="inset-panel"><summary>{{ t('Erkannte Angaben und Belege prüfen') }}</summary><ul>{% for evidence in profile.cv_evidence %}<li><strong>{{ evidence.field }}: {{ evidence.value }}</strong>{% if evidence.source_text %}<br><small>{{ evidence.source_text }}</small>{% endif %}</li>{% endfor %}</ul></details>{% endif %}
+    {% for warning in profile.cv_warnings %}<div class="notice warning">{{ warning }}</div>{% endfor %}
+    <div class="sticky-actions profile-save-actions"><span>{{ t('Änderungen führen später zu einer Neubewertung deiner Stellen.') }}</span><button class="button primary" type="submit">{{ t('Profil speichern') }}</button></div>
+  </section>
+  <section class="card tab-panel" id="preferences" role="tabpanel" aria-labelledby="tab-preferences" {% if not preferences_open %}hidden{% endif %}>
+    <div class="card-header">
+      <div><p class="eyebrow">{{ t('Deine Wünsche') }}</p><h2>{{ t('Welche Stelle suchst du?') }}</h2></div>
+      {% if preferences.can_undo %}<button class="button secondary" type="submit" formaction="{{ request.url_for('profile_preferences_undo') }}#preferences" formenctype="application/x-www-form-urlencoded" formnovalidate>{{ t('Letzte gespeicherte Änderung rückgängig machen') }}</button>{% endif %}
+    </div>
+    {% if preference_flash_message %}<div class="notice success preference-feedback" role="status">{{ preference_flash_message }}</div>{% endif %}
+    <div class="preference-guidance" role="note">
+      <span aria-hidden="true">i</span>
+      <div><strong>{{ t('Änderungen wirken sich auf deine Ergebnisse aus') }}</strong><p>{{ t('Job-Match-Scores, Rangfolge, sichtbare Empfehlungen und die zukünftige Suchabdeckung können sich ändern. Prüfe die erkannten Einstellungen vor dem Anwenden.') }}</p></div>
+    </div>
+
+    <div class="preference-prompt role-taxonomy-editor" id="role-taxonomy-editor">
+      <div class="preference-editor-heading">
+        <div><p class="eyebrow">{{ t('Schritt 1 · Suchrollen') }}</p><label for="role_taxonomy">{{ t('Rollenbegriffe für die Stellensuche') }}</label><small id="role-taxonomy-help">{{ t('Hauptbegriffe bestimmen die Rollenfamilien. Alle zusätzlichen Titel werden ebenfalls verbindlich in der Quellensuche und lokalen Rollenbewertung verwendet.') }}</small></div>
+        <div class="preference-editor-actions">
+          <button class="button secondary" type="button" data-role-taxonomy-reset data-reset-confirmation="{{ t('Rollenbegriffe auf den zuletzt bestätigten Stand zurückgesetzt.') }}">{{ t('Zurücksetzen') }}</button>
+          <button class="button secondary" type="submit" formaction="{{ request.url_for('profile_role_terms_generate') }}#role-taxonomy-editor" formenctype="application/x-www-form-urlencoded" formnovalidate>{{ t('Ähnliche Begriffe mit KI generieren') }}</button>
+          <button class="button primary" type="submit" name="preference_editor" value="role_taxonomy" formaction="{{ request.url_for('profile_preferences_review') }}#role-taxonomy-editor" formenctype="application/x-www-form-urlencoded" formnovalidate>{{ t('Weiter: prüfen und speichern') }}</button>
+        </div>
+      </div>
+      {% if role_generation_error %}<div class="notice danger" role="alert">{{ role_generation_error }}</div>{% endif %}
+      {% if role_generation_message %}<div class="notice success" role="status">{{ role_generation_message }}</div>{% endif %}
+      <textarea id="role_taxonomy" name="role_taxonomy" rows="12" maxlength="10000" aria-describedby="role-taxonomy-help{% if preference_plan and preference_plan.role_issues %} role-taxonomy-errors{% endif %}" {% if preference_plan and preference_plan.role_issues %}aria-invalid="true"{% endif %}>{{ preferences.role_taxonomy }}</textarea>
+      {% if preference_plan and preference_plan.role_issues %}
+      <div class="field-feedback danger" id="role-taxonomy-errors" role="alert"><strong>{{ t('Bitte korrigieren') }}</strong><ul>{% for issue in preference_plan.role_issues %}<li>{% if issue.line_number %}{{ t('Zeile {number}', number=issue.line_number) }}: {% endif %}{{ issue.message }}{% if issue.line %} <q>{{ issue.line }}</q>{% endif %}</li>{% endfor %}</ul></div>
+      {% endif %}
+      <textarea id="approved_role_taxonomy" class="sr-only" readonly tabindex="-1" aria-hidden="true">{{ preferences.approved_role_taxonomy }}</textarea>
+      <small>{{ t('Mehrere Hauptbegriffe sind möglich. Füge jeden Begriff als eigene Zeile mit Bindestrich unter der passenden Überschrift ein.') }}</small>
+      <small class="preference-reset-status" data-role-taxonomy-reset-status aria-live="polite" hidden></small>
+    </div>
+
+    <div class="preference-prompt" id="preference-prompt-editor">
+      <div class="preference-editor-heading">
+        <div><p class="eyebrow">{{ t('Schritt 2 · Weitere Stellenwünsche') }}</p><label for="preference_prompt">{{ t('Meine Stellenwünsche als Text') }}</label></div>
+        <div class="preference-editor-actions">
+          <button class="button secondary" type="button" data-preference-reset data-reset-confirmation="{{ t('Auf den zuletzt bestätigten Stand zurückgesetzt.') }}">{{ t('Auf gespeicherten Stand zurücksetzen') }}</button>
+          <button class="button secondary" type="button" data-preference-undo data-undo-confirmation="{{ t('Letzte Eingabe zurückgenommen.') }}" disabled>{{ t('Letzte Eingabe rückgängig machen') }}</button>
+          <button class="button primary" type="submit" name="preference_editor" value="preference_prompt" formaction="{{ request.url_for('profile_preferences_review') }}#preference-prompt-editor" formenctype="application/x-www-form-urlencoded" formnovalidate>{{ t('Weiter: prüfen und speichern') }}</button>
+        </div>
+      </div>
+      <textarea id="preference_prompt" name="preference_prompt" rows="10" maxlength="10000" aria-describedby="preference-prompt-help{% if preference_plan and preference_plan.prompt_issues %} preference-prompt-errors{% endif %}" {% if preference_plan and preference_plan.prompt_issues %}aria-invalid="true"{% endif %}>{{ preferences.preference_prompt }}</textarea>
+      {% if preference_plan and preference_plan.prompt_issues %}
+      <div class="field-feedback danger" id="preference-prompt-errors" role="alert"><strong>{{ t('Bitte korrigieren') }}</strong><ul>{% for issue in preference_plan.prompt_issues %}<li>{% if issue.line_number %}{{ t('Zeile {number}', number=issue.line_number) }}: {% endif %}{{ issue.message }}{% if issue.line %} <q>{{ issue.line }}</q>{% endif %}</li>{% endfor %}</ul></div>
+      {% endif %}
+      <textarea id="approved_preference_prompt" class="sr-only" readonly tabindex="-1" aria-hidden="true">{{ preferences.approved_preference_prompt }}</textarea>
+      <small id="preference-prompt-help">{{ t('Bearbeite die erzeugten Zeilen oder ergänze klare Wünsche. Jobradar zeigt dir vor dem Anwenden genau, welche strukturierten Einstellungen daraus entstehen.') }}</small>
+      <small class="preference-reset-status" data-preference-undo-status aria-live="polite" hidden></small>
+    </div>
+
+    {% if preference_plan and not preference_plan.issues %}
+    <section class="preference-review" id="preference-review" aria-labelledby="preference-review-title" data-preference-review tabindex="-1">
+      <div class="preference-review-heading">
+        <span class="preference-step-marker" aria-hidden="true">3</span>
+        <div><p class="eyebrow">{{ t('Schritt 3') }}</p><h3 id="preference-review-title">{{ t('Prüfen und speichern') }}</h3><p>{{ t('Kontrolliere die erkannten Änderungen. Gespeichert wird erst mit dem nächsten Klick.') }}</p></div>
+        <span class="preference-review-state">{{ t('Noch nicht gespeichert') }}</span>
+      </div>
+      {% if not preference_plan.changes %}
+      <div class="notice warning"><strong>{{ t('Keine Einstellungsänderung erkannt') }}</strong><p>{{ t('Passe mindestens einen Wert im Text an und prüfe ihn erneut.') }}</p></div>
+      {% else %}
+      <div class="preference-change-list">{% for change in preference_plan.changes %}<article><div><strong>{{ change.label }}</strong>{% if change.requires_crawl %}<span class="status-pill pending">{{ t('Neuer Quellenabruf') }}</span>{% endif %}</div><p><span>{{ change.before }}</span><span aria-hidden="true">→</span><strong>{{ change.after }}</strong></p></article>{% endfor %}</div>
+      {% if preference_plan.coverage_changed %}
+      <div class="notice warning prominent" role="status"><span aria-hidden="true">!</span><div><strong>{{ t('Neue Suche erforderlich') }}</strong><p>{{ t('Diese Änderung verschiebt oder erweitert die Suchabdeckung. Vorhandene Ergebnisse werden sofort neu bewertet. Vollständige neue Ergebnisse erscheinen erst nach einem Quellenabruf, der externe APIs oder Crawler kontaktieren kann und Zeit benötigt.') }}</p>{% if not preference_plan.crawling_enabled %}<p>{{ t('Crawling ist derzeit gesperrt. Du kannst die Einstellungen trotzdem anwenden und den Quellenabruf später starten.') }}</p>{% endif %}</div></div>
+      {% endif %}
+      <div class="preference-review-actions">
+        <button class="button primary" type="submit" formaction="{{ request.url_for('profile_preferences_apply') }}#preferences" formenctype="application/x-www-form-urlencoded" name="preference_action" value="apply">{{ t('Geprüfte Änderungen speichern') }}</button>
+        {% if preference_plan.coverage_changed %}<button class="button secondary" type="submit" formaction="{{ request.url_for('profile_preferences_apply') }}#preferences" formenctype="application/x-www-form-urlencoded" name="preference_action" value="apply_refresh" {% if not preference_plan.crawling_enabled %}disabled{% endif %}>{{ t('Speichern und Quellen aktualisieren') }}</button>{% endif %}
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+  </section>
+</form>
+{% if profile.cv_filename and not profile.is_confirmed %}<form method="post" action="{{ request.url_for('profile_confirm') }}" class="card"><h2>{{ t('Profil bestätigen') }}</h2><p>{{ t('Prüfe die erkannten Angaben oben. Erst nach deiner Bestätigung wird dieses Profil für die Kandidatenpassung verwendet.') }}</p><button class="button primary" type="submit">{{ t('Angaben sind geprüft') }}</button></form>{% endif %}
+{% endblock %}

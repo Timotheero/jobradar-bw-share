@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }} · GF-Jobradar{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="{{ t('Brotkrümelnavigation') }}"><a href="{{ request.url_for('jobs') }}">{{ t('Stellen') }}</a><span aria-hidden="true">/</span><span aria-current="page">{{ t('Stellendetails') }}</span></nav>
+
+{% if job.availability_status == 'inactive' %}<div class="notice danger" role="alert"><strong>{{ t('Anzeige nicht mehr verfügbar') }}</strong>{% if job.availability_checked_label %}<p>{{ t('Zuletzt geprüft: {date}', date=job.availability_checked_label) }}</p>{% endif %}</div>{% elif job.availability_status == 'check_failed' %}<div class="notice warning" role="status"><strong>{{ t('Verfügbarkeit konnte zuletzt nicht bestätigt werden') }}</strong>{% if job.availability_checked_label %}<p>{{ t('Zuletzt geprüft: {date}', date=job.availability_checked_label) }}</p>{% endif %}</div>{% endif %}
+
+<section class="card job-hero" aria-labelledby="job-title">
+  <div class="job-hero-main">
+    <div class="company-avatar large" aria-hidden="true">{{ job.company_initials }}</div>
+    <div class="detail-title">
+      <div class="tag-row">{% if job.is_new %}<span class="tag accent">{{ t('Neu') }}</span>{% endif %}<span class="tag {{ job.workplace_class }}">{{ job.workplace }}</span></div>
+      <h1 id="job-title">{{ job.title }}</h1>
+      <p class="hero-company"><span>{{ t('Arbeitgeber') }}</span><strong>{{ job.company }}</strong></p>
+      <p class="hero-location">{{ job.location }}</p>
+    </div>
+    <div class="detail-actions"><form method="post" action="{{ request.url_for('job_status_save', job_id=job.id) }}"><input type="hidden" name="status" value="Merkliste"><button class="button secondary" type="submit">{{ t('Vorgemerkt') if job.is_saved else t('Vormerken') }}</button></form>{% if job.original_url %}<a class="button primary" href="{{ job.original_url }}" rel="noopener noreferrer" target="_blank">{{ t('Originalanzeige öffnen') }} <span class="sr-only">{{ t('(öffnet neues Fenster)') }}</span></a>{% endif %}</div>
+  </div>
+  <dl class="quick-facts" aria-label="{{ t('Wichtigste Angaben') }}">
+    <div><dt>{{ t('Arbeitsmodell') }}</dt><dd>{{ job.workplace }}</dd></div>
+    <div><dt>{{ t('Arbeitszeit') }}</dt><dd>{{ job.employment }}</dd></div>
+    <div><dt>{{ t('Vertrag') }}</dt><dd>{{ job.contract }}</dd></div>
+    <div><dt>{{ t('Vergütung') }}</dt><dd>{{ job.salary }}</dd></div>
+    <div><dt>{{ t('Veröffentlicht') }}</dt><dd>{{ job.published_label }}</dd></div>
+  </dl>
+</section>
+
+<div class="detail-grid readable-detail-grid">
+  <div class="detail-main">
+    <section class="card job-summary-card" aria-labelledby="summary-title" data-job-summary data-summary-state="{{ automatic_summary.state }}" data-summary-url="{{ request.url_for('job_summary_generate', job_id=job.id) }}" data-error-label="{{ t('Die automatische Zusammenfassung konnte nicht erstellt werden.') }}">
+      <div class="content-section-heading">
+        <div><p class="eyebrow">{{ t('Das Wichtigste zuerst') }}</p><h2 id="summary-title">{{ t('Kurze Zusammenfassung') }}</h2></div>
+        <span class="ai-model-label">{{ t('Automatisch mit {model} · {effort}', model=automatic_summary.model, effort=automatic_summary.reasoning_effort) }}</span>
+      </div>
+      <div class="summary-body">
+        <p class="summary-overview" data-summary-overview>{{ automatic_summary.overview }}</p>
+        <ul class="summary-points" data-summary-points {% if not automatic_summary.key_points %}hidden{% endif %}>{% for point in automatic_summary.key_points %}<li>{{ point }}</li>{% endfor %}</ul>
+        <div class="summary-missing" data-summary-missing {% if not automatic_summary.missing_information %}hidden{% endif %}><h3>{{ t('Noch zu klären') }}</h3><ul>{% for point in automatic_summary.missing_information %}<li>{{ point }}</li>{% endfor %}</ul></div>
+        <p class="summary-error" data-summary-error hidden></p>
+      </div>
+    </section>
+
+    <details class="card prose job-description original-description">
+      <summary><span>{{ t('Originaltext anzeigen') }}</span><small>{{ t('Vollständige Stellenbeschreibung in lesbarer Formatierung') }}</small></summary>
+      <div class="content-section-heading"><p class="eyebrow">{{ t('Originalinhalt') }}</p><h2 id="description-title">{{ t('Stellenbeschreibung') }}</h2></div>
+      <div class="prose-body">{{ job.description_html|safe }}</div>
+    </details>
+
+    <section class="card assessment-card" aria-labelledby="assessment-title">
+      <div class="content-section-heading"><p class="eyebrow">{{ t('Einordnung') }}</p><h2 id="assessment-title">{{ t('Bewertung der Stelle') }}</h2><p>{{ job.summary }}</p></div>
+      <div class="assessment-scores">
+        <article><div><strong>{{ t('Aufgabennähe') }}</strong><span>{{ t('Aufgaben einer GF-Assistenz') }}</span></div><b>{{ job.role_score }} %</b><div class="score-track" aria-hidden="true"><span style="width: {{ job.role_score }}%"></span></div></article>
+        <article><div><strong>{{ t('Kandidatenpassung') }}</strong><span>{{ t('Dein Profil und deine Wünsche') }}</span></div><b>{{ job.fit_score }} %</b><div class="score-track personal" aria-hidden="true"><span style="width: {{ job.fit_score }}%"></span></div></article>
+      </div>
+      <div class="assessment-reasons"><h3>{{ t('Passungsgründe') }}</h3><ul class="reason-list">{% for reason in job.reasons %}<li><span aria-hidden="true">✓</span>{{ reason }}</li>{% else %}<li><span aria-hidden="true">○</span>{{ t('Für diese Stelle liegt noch keine ausführliche Bewertung vor.') }}</li>{% endfor %}</ul>{% if job.concerns %}<h3>{{ t('Darauf solltest du achten') }}</h3><ul class="concern-list">{% for concern in job.concerns %}<li>{{ concern }}</li>{% endfor %}</ul>{% endif %}</div>
+    </section>
+  </div>
+
+  <aside class="detail-aside">
+    <section class="card action-card" aria-labelledby="status-title">
+      <h2 id="status-title">{{ t('Meine Auswahl') }}</h2>
+      <form method="post" action="{{ request.url_for('job_status_save', job_id=job.id) }}" class="stacked-detail-form">
+        <div><label for="status">{{ t('Bewerbungsstatus') }}</label><select id="status" name="status">{% for status in pipeline_statuses %}<option value="{{ status }}" {% if job.application_status == status %}selected{% endif %}>{{ t(status) }}</option>{% endfor %}</select></div>
+        <div><label for="notes">{{ t('Notiz') }}</label><textarea id="notes" name="notes" rows="3" placeholder="{{ t('Optional') }}">{{ job.application_notes }}</textarea></div>
+        <button class="button secondary wide" type="submit">{{ t('Status und Notiz speichern') }}</button>
+      </form>
+    </section>
+
+    <section class="card facts-card" aria-labelledby="facts-title"><h2 id="facts-title">{{ t('Stellendaten') }}</h2><dl><div><dt>{{ t('Arbeitgeber') }}</dt><dd>{{ job.company }}</dd></div><div><dt>{{ t('Arbeitsort') }}</dt><dd>{{ job.location }}</dd></div><div><dt>{{ t('Fahrtzeit') }}</dt><dd>{{ job.commute_label }}</dd></div><div><dt>{{ t('Quelle') }}</dt><dd>{{ job.source_label }}</dd></div></dl></section>
+
+    <section class="card source-card" aria-labelledby="source-title"><h2 id="source-title">{{ t('Herkunft der Anzeige') }}</h2><ul>{% for source in job.sources %}<li><span class="source-mark" aria-hidden="true">{{ source.initial }}</span><div><strong>{{ source.name }}</strong><small>{{ source.label }}</small></div></li>{% else %}<li><div><strong>{{ t('Noch keine Quelle') }}</strong><small>{{ t('Der Import wurde noch nicht gestartet.') }}</small></div></li>{% endfor %}</ul>{% if job.last_seen_label %}<p class="source-updated">{{ t('Zuletzt gesehen: {date}', date=job.last_seen_label) }}</p>{% endif %}</section>
+  </aside>
+</div>
+{% endblock %}

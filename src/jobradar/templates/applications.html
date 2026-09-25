@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Bewerbungen') }} · GF-Jobradar{% endblock %}
+{% block content %}
+<header class="page-header split-header">
+  <div>
+    <p class="eyebrow">{{ t('Dein Fortschritt') }}</p>
+    <h1>{{ t('Bewerbungen') }}</h1>
+    <p class="lede">{{ t('Entwürfe erstellen, unabhängig prüfen und vor jeder weiteren Aktion bearbeiten.') }}</p>
+  </div>
+  <a class="button secondary" href="{{ request.url_for('jobs') }}">{{ t('Stellen auswählen') }}</a>
+</header>
+
+{% if draft_flash %}
+<div class="notice {{ draft_flash.kind }}" role="status">{{ t(draft_flash.message) }}</div>
+{% endif %}
+
+<section class="card draft-control" aria-labelledby="draft-control-title">
+  <div class="card-header">
+    <div>
+      <p class="eyebrow">{{ t('Nur Entwürfe') }}</p>
+      <h2 id="draft-control-title">{{ t('Bewerbungsentwürfe vorbereiten') }}</h2>
+      <p>{{ t('Codex formuliert einen Lebenslaufentwurf und ein Anschreiben. Eine getrennte HR-Prüfung bewertet beide Texte. Es wird nichts versendet.') }}</p>
+    </div>
+  </div>
+  <form method="post" action="{{ request.url_for('application_drafts_generate') }}" class="draft-threshold-form">
+    <input type="hidden" name="mode" value="threshold">
+    <div>
+      <label for="min-role-score">{{ t('Mindest-Aufgabennähe') }}</label>
+      <input id="min-role-score" name="min_role_score" type="number" min="0" max="100" value="70" required>
+    </div>
+    <div>
+      <label for="min-fit-score">{{ t('Mindest-Kandidatenpassung') }}</label>
+      <input id="min-fit-score" name="min_fit_score" type="number" min="0" max="100" value="75" required>
+    </div>
+    <div>
+      <label for="draft-limit">{{ t('Maximale Entwürfe') }}</label>
+      <input id="draft-limit" name="limit" type="number" min="1" max="{{ max_draft_jobs }}" value="{{ max_draft_jobs }}" required>
+    </div>
+    <button class="button primary" type="submit">{{ t('Entwürfe ab Mindestwerten erstellen') }}</button>
+  </form>
+</section>
+
+<section class="draft-list-section" aria-labelledby="draft-list-title">
+  <div class="section-heading">
+    <h2 id="draft-list-title">{{ t('Bewerbungsentwürfe') }}</h2>
+    <span>{{ drafts|length }}</span>
+    <p>{{ t('Bearbeitbare Texte mit unabhängiger HR-Rückmeldung.') }}</p>
+  </div>
+  {% if drafts %}
+  <div class="draft-grid">
+    {% for draft in drafts %}
+    <article class="card draft-card">
+      <span class="pipeline-date">{{ draft.updated_label }} · {{ t('Version {revision}', revision=draft.revision) }}</span>
+      <h3><a href="{{ request.url_for('application_draft_detail', draft_id=draft.id) }}">{{ draft.title }}</a></h3>
+      <p>{{ draft.company }}</p>
+      <span class="tag {{ 'score' if draft.status == 'reviewed' else 'accent' }}">{{ draft.status_label }}</span>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state small">
+    <span class="empty-icon" aria-hidden="true">◇</span>
+    <h3>{{ t('Noch keine Bewerbungsentwürfe') }}</h3>
+    <p>{{ t('Wähle Stellen aus oder starte einen Lauf über die Mindestwerte.') }}</p>
+  </div>
+  {% endif %}
+</section>
+
+<div class="pipeline" aria-label="{{ t('Bewerbungsstatus') }}">
+  {% for column in pipeline %}
+  <section class="pipeline-column" aria-labelledby="pipeline-{{ loop.index }}">
+    <header><h2 id="pipeline-{{ loop.index }}">{{ column.label }}</h2><span>{{ column["items"]|length }}</span></header>
+    <div class="pipeline-items">
+      {% for item in column["items"] %}
+      <article class="pipeline-card">
+        <span class="pipeline-date">{{ item.updated_label }}</span>
+        <h3><a href="{{ request.url_for('web_job_detail', job_id=item.job_id) }}">{{ item.title }}</a></h3>
+        <p>{{ item.company }}</p>
+        <div class="tag-row"><span class="tag {{ item.workplace_class }}">{{ item.workplace }}</span>{% if item.role_score %}<span class="tag score">{{ t('{score} % Aufgabe', score=item.role_score) }}</span>{% endif %}</div>
+      </article>
+      {% else %}
+      <div class="pipeline-empty"><span aria-hidden="true">＋</span><p>{{ t('Noch keine Stelle') }}</p></div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

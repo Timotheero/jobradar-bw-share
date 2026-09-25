@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Stellen') }} · GF-Jobradar{% endblock %}
+{% block content %}
+<header class="page-header split-header jobs-page-header">
+  <div>
+    <p class="eyebrow">{{ t('Stellensuche') }}</p>
+    <h1>{% if filters.view == 'all' %}{{ t('Alle Stellen') }}{% elif filters.view == 'title_matches' %}{{ t('Passende Stellentitel') }}{% else %}{{ t('Beste Treffer') }}{% endif %}</h1>
+    <p class="lede">{{ t('Öffne eine Stelle für Beschreibung, Arbeitgeber, Standort und Bewertung.') }}</p>
+  </div>
+  <nav class="view-switch" aria-label="{{ t('Ansicht') }}">
+    <a class="button {% if filters.view == 'all' %}primary{% else %}secondary{% endif %}" href="{{ request.url_for('jobs').include_query_params(view='all') }}">{{ t('Alle Stellen') }}</a>
+    <a class="button {% if filters.view == 'title_matches' %}primary{% else %}secondary{% endif %}" href="{{ request.url_for('jobs').include_query_params(view='title_matches') }}">{{ t('Passende Stellentitel') }}</a>
+    <a class="button {% if filters.view == 'matches' %}primary{% else %}secondary{% endif %}" href="{{ request.url_for('jobs').include_query_params(view='matches') }}">{{ t('Beste Treffer') }}</a>
+  </nav>
+</header>
+
+<form class="card filter-card" method="get" action="{{ request.url_for('jobs') }}" aria-label="{{ t('Stellen filtern') }}">
+  <input type="hidden" name="view" value="{{ filters.view }}">
+  <div class="filter-primary">
+    <div class="search-field">
+      <span aria-hidden="true">⌕</span>
+      <label for="q">{{ t('Stellen durchsuchen') }}</label>
+      <input id="q" name="q" value="{{ filters.q }}" placeholder="{{ t('Titel, Unternehmen oder Aufgabe') }}">
+    </div>
+    <button class="button primary" type="submit">{{ t('Suchen') }}</button>
+  </div>
+  <details class="advanced-filters" {% if filters_active %}open{% endif %}>
+    <summary>{{ t('Weitere Filter') }}</summary>
+    <div class="filter-panel">
+      <div><label for="min_score">{{ t('Aufgabennähe') }}</label><select id="min_score" name="min_score"><option value="0">{{ t('Alle') }}</option><option value="60" {% if filters.min_score == 60 %}selected{% endif %}>{{ t('ab 60 %') }}</option><option value="70" {% if filters.min_score == 70 %}selected{% endif %}>{{ t('ab 70 %') }}</option><option value="80" {% if filters.min_score == 80 %}selected{% endif %}>{{ t('ab 80 %') }}</option></select></div>
+      <div><label for="role_scope">{{ t('Rollenart') }}</label><select id="role_scope" name="role_scope"><option value="all">{{ t('Alle Rollenarten') }}</option><option value="core" {% if filters.role_scope == 'core' %}selected{% endif %}>{{ t('Enge Assistenzrollen') }}</option><option value="strategic" {% if filters.role_scope == 'strategic' %}selected{% endif %}>{{ t('Strategisch erweitert') }}</option></select></div>
+      <button class="button secondary" type="submit">{{ t('Filter anwenden') }}</button>
+    </div>
+    {% if filters_active %}<a class="clear-filter" href="{{ request.url_for('jobs').include_query_params(view=filters.view) }}">{{ t('Filter zurücksetzen') }}</a>{% endif %}
+  </details>
+</form>
+
+{% if jobs_by_workplace %}
+<form method="post" action="{{ request.url_for('application_drafts_generate') }}">
+  <input type="hidden" name="mode" value="selected">
+  <div class="results-toolbar">
+    <p><strong>{{ t('{total} Stellen gefunden', total=total) }}</strong><span>{{ t('Neueste zuerst') if filters.view != 'matches' else t('Beste Passung') }}</span></p>
+    <button class="button primary" type="submit">{{ t('Entwürfe für Auswahl erstellen') }}</button>
+  </div>
+  {% for section in jobs_by_workplace %}
+  <section class="result-section" aria-labelledby="section-{{ section.key }}">
+    <div class="section-heading"><h2 id="section-{{ section.key }}"><span class="workplace-symbol {{ section.key }}" aria-hidden="true"></span>{{ section.label }}</h2><span>{{ section.total }}</span><p>{{ section.description }}</p></div>
+    <div
+      class="job-list"
+      data-job-list
+      data-next-offset="{{ section.jobs|length }}"
+      data-load-url="{{ request.url_for('jobs_more').include_query_params(section=section.key, view=filters.view, q=filters.q, min_score=filters.min_score, role_scope=filters.role_scope) }}"
+    >
+      {% with jobs=section.jobs, show_match_reason=filters.view != 'all' %}{% include "job_cards.html" %}{% endwith %}
+    </div>
+    {% if section.has_more %}
+    <div class="job-list-sentinel" data-job-list-sentinel aria-live="polite">
+      <span class="loading-indicator" aria-hidden="true"></span>
+      <span data-loading-label>{{ t('Weitere Stellen werden geladen') }}</span>
+      <button class="button secondary" type="button" data-load-more>{{ t('Weitere Stellen laden') }}</button>
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+</form>
+{% else %}
+<div class="empty-state">
+  <span class="empty-icon" aria-hidden="true">⌕</span>
+  {% if filters_active or filters.view != 'all' %}
+  <h2>{{ t('Keine Stellen passen zu dieser Auswahl') }}</h2>
+  <p>{{ t('Setze die Filter zurück oder öffne alle gespeicherten Stellen.') }}</p>
+  <div class="empty-actions"><a class="button secondary" href="{{ request.url_for('jobs').include_query_params(view=filters.view) }}">{{ t('Filter zurücksetzen') }}</a><a class="button primary" href="{{ request.url_for('jobs').include_query_params(view='all') }}">{{ t('Alle Stellen') }}</a></div>
+  {% else %}
+  <h2>{{ t('Noch keine Stellen im Radar') }}</h2>
+  <p>{{ t('Nach dem ersten Suchlauf erscheinen hier Titel, Arbeitgeber, Standort und Beschreibung.') }}</p>
+  <a class="button secondary" href="{{ request.url_for('sources') }}">{{ t('Quellenstatus ansehen') }}</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

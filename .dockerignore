@@ -1,0 +1,11 @@
+# The image needs only the packaged application.  Keep credentials, local
+# databases, virtual environments, archives and crawler checkouts out of the
+# build context, including when a remote BuildKit builder is used.
+**
+!Dockerfile
+!pyproject.toml
+!alembic.ini
+!migrations/
+!migrations/**
+!src/
+!src/**

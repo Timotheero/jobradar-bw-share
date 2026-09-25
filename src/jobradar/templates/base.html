@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#0b6b61">
+  <title>{% block title %}GF-Jobradar{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css?v=17">
+  <script src="/static/app.js?v=18" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">{{ t('Zum Inhalt springen') }}</a>
+  <header class="topbar">
+    <a class="brand" href="{{ request.url_for('dashboard') }}" aria-label="{{ t('GF-Jobradar – Startseite') }}">
+      <span class="brand-mark" aria-hidden="true">GF</span>
+      <span>
+        <strong>Jobradar</strong>
+        <small>{{ t('Assistenz- und Stabsrollen') }}</small>
+      </span>
+    </a>
+    <div class="topbar-actions">
+      <a class="system-chip neutral" href="{{ request.url_for('sources') }}?crawl_tab=true" data-system-job-portals data-inactive-class="warning" data-active-label="{{ t('Jobportale: bereit') }}" data-inactive-label="{{ t('Jobportale: pausiert') }}" data-running-label="{{ t('Jobportale: Crawl läuft') }}" data-limited-label="{{ t('Jobportale: eingeschränkt') }}" data-error-label="{{ t('Jobportale: Fehler') }}" data-pending-label="{{ t('Jobportale: nicht geprüft') }}" data-found-label="{{ t('gefunden') }}" data-added-label="{{ t('neu/24 h') }}">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span data-system-label>{{ t('Jobportale: nicht geprüft') }}</span>
+        <span class="system-chip-meta" data-source-meta hidden></span>
+      </a>
+      <a class="system-chip neutral" href="{{ request.url_for('sources') }}?crawl_tab=true" data-system-company-sites data-inactive-class="warning" data-active-label="{{ t('Firmenportale: bereit') }}" data-inactive-label="{{ t('Firmenportale: pausiert') }}" data-running-label="{{ t('Firmenportale: Crawl läuft') }}" data-limited-label="{{ t('Firmenportale: eingeschränkt') }}" data-error-label="{{ t('Firmenportale: Fehler') }}" data-pending-label="{{ t('Firmenportale: nicht geprüft') }}" data-found-label="{{ t('gefunden') }}" data-added-label="{{ t('neu/24 h') }}">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span data-system-label>{{ t('Firmenportale: nicht geprüft') }}</span>
+        <span class="system-chip-meta" data-source-meta hidden></span>
+      </a>
+      <a class="system-chip neutral" href="{{ request.url_for('sources') }}" data-system-api-calls data-inactive-class="warning" data-active-label="{{ t('APIs: bereit') }}" data-inactive-label="{{ t('APIs: pausiert') }}" data-running-label="{{ t('API-Abruf läuft') }}" data-error-label="{{ t('APIs: Fehler') }}" data-pending-label="{{ t('APIs: nicht geprüft') }}" data-found-label="{{ t('gefunden') }}" data-added-label="{{ t('neu/24 h') }}">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span data-system-label>{{ t('APIs: nicht geprüft') }}</span>
+        <span class="system-chip-meta" data-source-meta hidden></span>
+      </a>
+      <a class="system-chip neutral" href="{{ request.url_for('settings') }}" data-system-chatgpt data-inactive-class="neutral" data-active-label="{{ t('ChatGPT verbunden') }}" data-inactive-label="{{ t('ChatGPT nicht verbunden') }}" data-pending-label="{{ t('ChatGPT: nicht geprüft') }}">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span data-system-label>{{ t('ChatGPT: nicht geprüft') }}</span>
+      </a>
+      <nav class="language-switch" aria-label="{{ t('Sprache') }}">
+        <a href="{{ language_url('de') }}" lang="de" {% if locale == 'de' %}aria-current="true"{% endif %}>DE</a>
+        <a href="{{ language_url('en') }}" lang="en" {% if locale == 'en' %}aria-current="true"{% endif %}>EN</a>
+      </nav>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav">
+        <span class="sr-only">{{ t('Navigation öffnen') }}</span>
+        <span aria-hidden="true">☰</span>
+      </button>
+    </div>
+  </header>
+  <div class="app-shell">
+    <nav class="sidebar" id="main-nav" aria-label="{{ t('Hauptnavigation') }}">
+      <ul>
+        <li><a href="{{ request.url_for('dashboard') }}" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}><span aria-hidden="true">⌂</span> {{ t('Übersicht') }}</a></li>
+        <li><a href="{{ request.url_for('jobs') }}" {% if active_page == 'jobs' %}aria-current="page"{% endif %}><span aria-hidden="true">◎</span> {{ t('Stellen') }}</a></li>
+        <li><a href="{{ request.url_for('applications') }}" {% if active_page == 'applications' %}aria-current="page"{% endif %}><span aria-hidden="true">▤</span> {{ t('Bewerbungen') }}</a></li>
+        <li><a href="{{ request.url_for('profile') }}" {% if active_page == 'profile' %}aria-current="page"{% endif %}><span aria-hidden="true">◇</span> {{ t('Mein Profil') }}</a></li>
+        <li><a href="{{ request.url_for('sources') }}" {% if active_page == 'sources' %}aria-current="page"{% endif %}><span aria-hidden="true">↻</span> {{ t('Quellen') }}</a></li>
+        <li><a href="{{ request.url_for('settings') }}" {% if active_page == 'settings' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙</span> {{ t('Einstellungen') }}</a></li>
+      </ul>
+      <div class="sidebar-note">
+        <strong>{{ t('Privater Bereich') }}</strong>
+        <span>{{ t('Zugriff über deinen privaten SSH-Tunnel') }}</span>
+      </div>
+    </nav>
+    <main id="main-content" class="main-content" tabindex="-1">
+      {% if flash_message %}
+      <div class="notice success" role="status">{{ flash_message }}</div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

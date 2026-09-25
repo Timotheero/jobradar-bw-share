@@ -1,0 +1,51 @@
+services:
+  api:
+    restart: unless-stopped
+    cpus: 2.0
+    mem_limit: 2G
+    memswap_limit: 2G
+    environment:
+      NUQ_WORKER_COUNT: ${NUQ_WORKER_COUNT:-1}
+      SEARXNG_ENDPOINT: ${SEARXNG_ENDPOINT:-http://searxng:8080}
+    depends_on:
+      searxng:
+        condition: service_started
+    networks:
+      backend: {}
+      jobradar_sources:
+        aliases:
+          - firecrawl-api
+  playwright-service:
+    restart: unless-stopped
+    cpus: 1.0
+    mem_limit: 1536M
+    memswap_limit: 1536M
+    tmpfs:
+      - /tmp/.cache:noexec,nosuid,size=512m
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    cpus: 0.75
+    mem_limit: 512M
+    memswap_limit: 512M
+    volumes:
+      - ../searxng/settings.yml:/etc/searxng/settings.yml:ro
+    networks:
+      backend: {}
+  redis:
+    restart: unless-stopped
+  rabbitmq:
+    restart: unless-stopped
+  nuq-postgres:
+    restart: unless-stopped
+  foundationdb:
+    profiles:
+      - foundationdb
+  foundationdb-init:
+    profiles:
+      - foundationdb
+
+networks:
+  jobradar_sources:
+    external: true
+    name: jobradar_sources

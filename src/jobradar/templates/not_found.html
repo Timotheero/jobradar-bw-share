@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Stelle nicht gefunden') }} · GF-Jobradar{% endblock %}
+{% block content %}
+<div class="empty-state standalone"><span class="empty-icon" aria-hidden="true">?</span><h1>{{ t('Diese Stelle wurde nicht gefunden') }}</h1><p>{{ t('Vielleicht wurde sie entfernt oder noch nicht importiert.') }}</p><a class="button primary" href="{{ request.url_for('jobs') }}">{{ t('Zur Stellenübersicht') }}</a></div>
+{% endblock %}

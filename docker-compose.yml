@@ -1,0 +1,109 @@
+name: jobradar-bw
+
+x-jobradar-common: &jobradar-common
+  build:
+    context: .
+    args:
+      INSTALL_CODEX: ${INSTALL_CODEX:-false}
+  restart: unless-stopped
+  networks:
+    - internal
+    - jobradar_sources
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-jobradar}
+      POSTGRES_USER: ${POSTGRES_USER:-jobradar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jobradar} -d ${POSTGRES_DB:-jobradar}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    <<: *jobradar-common
+    env_file:
+      - .env
+    volumes:
+      - jobradar_data:/data
+      - codex_home:/home/jobradar/.codex
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  worker:
+    <<: *jobradar-common
+    command: ["jobradar-worker"]
+    volumes:
+      - jobradar_data:/data
+      - codex_home:/home/jobradar/.codex
+    environment: &jobradar-worker-environment
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL muss gesetzt sein}
+      CRAWLING_ENABLED: ${CRAWLING_ENABLED:-false}
+      BA_JOBS_ENABLED: ${BA_JOBS_ENABLED:-true}
+      FIRECRAWL_ENABLED: ${FIRECRAWL_ENABLED:-true}
+      FIRECRAWL_BASE_URL: ${FIRECRAWL_BASE_URL:-http://firecrawl-api:3002}
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+      ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
+      ADZUNA_API_KEY: ${ADZUNA_API_KEY:-}
+      JOOBLE_API_KEY: ${JOOBLE_API_KEY:-}
+      CODEX_ENABLED: ${CODEX_ENABLED:-false}
+      CODEX_COMMAND: ${CODEX_COMMAND:-codex app-server}
+      CODEX_MODEL: ${CODEX_MODEL:-}
+      CODEX_MAX_JOBS_PER_RUN: ${CODEX_MAX_JOBS_PER_RUN:-50}
+      CODEX_MIN_REMAINING_PERCENT: ${CODEX_MIN_REMAINING_PERCENT:-20}
+      CODEX_DATA_DIR: ${CODEX_DATA_DIR:-/data/codex-workspace}
+      SYNC_INTERVAL_MINUTES: ${SYNC_INTERVAL_MINUTES:-360}
+      JOBRADAR_SYNC_EXCLUDE_SOURCES: firecrawl_self_hosted
+      DEFAULT_LOCALE: ${DEFAULT_LOCALE:-de}
+      DEFAULT_REGION: ${DEFAULT_REGION:-Baden-Wuerttemberg}
+      TZ: ${TZ:-Europe/Berlin}
+    depends_on:
+      app:
+        condition: service_healthy
+
+  crawler:
+    <<: *jobradar-common
+    command: ["jobradar-worker", "--source", "firecrawl_self_hosted"]
+    volumes:
+      - jobradar_data:/data
+      - codex_home:/home/jobradar/.codex
+    environment:
+      <<: *jobradar-worker-environment
+      SYNC_INTERVAL_MINUTES: ${FIRECRAWL_SYNC_INTERVAL_MINUTES:-120}
+    depends_on:
+      app:
+        condition: service_healthy
+
+
+networks:
+  internal:
+    internal: true
+  jobradar_sources:
+    name: jobradar_sources
+    external: true
+
+volumes:
+  postgres_data:
+  jobradar_data:
+  codex_home:

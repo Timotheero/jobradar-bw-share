@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Bewerbungsentwurf') }} · GF-Jobradar{% endblock %}
+{% block content %}
+<header class="page-header split-header">
+  <div>
+    <p class="eyebrow">{{ t('Bewerbungsentwurf') }} · {{ t('Version {revision}', revision=draft.revision) }}</p>
+    <h1>{{ job.title }}</h1>
+    <p class="lede">{{ job.employer or t('Arbeitgeber nicht angegeben') }}{% if job.location_text %} · {{ job.location_text }}{% endif %}</p>
+  </div>
+  <a class="button secondary" href="{{ request.url_for('applications') }}">{{ t('Zur Entwurfsübersicht') }}</a>
+</header>
+
+{% if draft_flash %}
+<div class="notice {{ draft_flash.kind }}" role="status">{{ t(draft_flash.message) }}</div>
+{% endif %}
+
+<div class="notice neutral prominent">
+  <span aria-hidden="true">i</span>
+  <div><strong>{{ t('Kein Versand') }}</strong><p>{{ t('Diese Seite speichert und prüft nur lokale Entwürfe. Es werden keine Formulare ausgefüllt, Dateien hochgeladen oder Nachrichten versendet.') }}</p></div>
+</div>
+
+<div class="draft-editor-grid">
+  <form method="post" action="{{ request.url_for('application_draft_save', draft_id=draft.id) }}" class="card draft-editor">
+    <div class="card-header">
+      <div>
+        <p class="eyebrow">{{ t('Bearbeitbar') }}</p>
+        <h2>{{ t('Unterlagen') }}</h2>
+      </div>
+      <span class="tag {{ 'score' if draft.status == 'reviewed' else 'accent' }}">
+        {% if draft.status == 'reviewed' %}{{ t('HR-Prüfung bestanden') }}{% elif draft.status == 'edited' %}{{ t('Erneute HR-Prüfung erforderlich') }}{% else %}{{ t('Überarbeitung empfohlen') }}{% endif %}
+      </span>
+    </div>
+    <div class="draft-fields">
+      <label for="cv-draft">{{ t('Lebenslaufentwurf') }}</label>
+      <textarea id="cv-draft" name="cv_draft" rows="22" maxlength="20000" required>{{ draft.cv_draft }}</textarea>
+      <label for="cover-letter">{{ t('Motivationsschreiben') }}</label>
+      <textarea id="cover-letter" name="cover_letter" rows="20" maxlength="10000" required>{{ draft.cover_letter }}</textarea>
+    </div>
+    <div class="sticky-actions">
+      <span>{{ t('Speichern setzt die bisherige HR-Prüfung zurück.') }}</span>
+      <button class="button primary" type="submit">{{ t('Entwurf speichern') }}</button>
+    </div>
+  </form>
+
+  <aside class="card draft-review" aria-labelledby="draft-review-title">
+    <div class="card-header">
+      <div>
+        <p class="eyebrow">{{ t('Unabhängige Prüfung') }}</p>
+        <h2 id="draft-review-title">{{ t('HR-Rückmeldung') }}</h2>
+      </div>
+    </div>
+    {% if review %}
+      <p>{{ review.summary }}</p>
+      {% if review.scores %}
+      <dl class="review-scores">
+        <div><dt>{{ t('Relevanz') }}</dt><dd>{{ review.scores.relevance }}/5</dd></div>
+        <div><dt>{{ t('Belegbarkeit') }}</dt><dd>{{ review.scores.evidence }}/5</dd></div>
+        <div><dt>{{ t('Klarheit') }}</dt><dd>{{ review.scores.clarity }}/5</dd></div>
+        <div><dt>{{ t('Motivation') }}</dt><dd>{{ review.scores.motivation }}/5</dd></div>
+      </dl>
+      {% endif %}
+      {% if review.unsupported_claims %}<section><h3>{{ t('Nicht belegte Aussagen') }}</h3><ul>{% for item in review.unsupported_claims %}<li>{{ item }}</li>{% endfor %}</ul></section>{% endif %}
+      {% if review.must_fix %}<section><h3>{{ t('Muss überarbeitet werden') }}</h3><ul>{% for item in review.must_fix %}<li>{{ item }}</li>{% endfor %}</ul></section>{% endif %}
+      {% if review.optional_improvements %}<section><h3>{{ t('Optionale Verbesserungen') }}</h3><ul>{% for item in review.optional_improvements %}<li>{{ item }}</li>{% endfor %}</ul></section>{% endif %}
+    {% else %}
+      <div class="empty-state small"><span class="empty-icon" aria-hidden="true">◇</span><h3>{{ t('Prüfung erforderlich') }}</h3><p>{{ t('Der Entwurf wurde bearbeitet und muss erneut unabhängig geprüft werden.') }}</p></div>
+    {% endif %}
+    <form method="post" action="{{ request.url_for('application_draft_review', draft_id=draft.id) }}">
+      <button class="button secondary wide" type="submit">{{ t('HR-Prüfung erneut ausführen') }}</button>
+    </form>
+    {% if draft.questions %}<section><h3>{{ t('Offene Fragen') }}</h3><ul>{% for item in draft.questions %}<li>{{ item }}</li>{% endfor %}</ul></section>{% endif %}
+    {% if draft.evidence_map %}<details><summary>{{ t('Verwendete Profilbelege') }}</summary><ul>{% for item in draft.evidence_map %}<li><strong>{{ item.claim }}</strong><br><small>{{ item.evidence_ids|join(', ') }}</small></li>{% endfor %}</ul></details>{% endif %}
+  </aside>
+</div>
+{% endblock %}

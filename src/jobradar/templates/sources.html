@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Quellen') }} · GF-Jobradar{% endblock %}
+{% block content %}
+<header class="page-header split-header">
+  <div>
+    <p class="eyebrow">{{ t('Datenabdeckung') }}</p>
+    <h1>{{ t('Quellen') }}</h1>
+    <p class="lede">{{ t('Hier verwaltest du Datenquellen und startest bei Bedarf genau einen manuellen Abruf.') }}</p>
+  </div>
+  <form method="post" action="{{ request.url_for('sources_sync') }}">
+    <button class="button primary" type="submit" {% if not effective_api_access %}disabled{% endif %}>{{ t('Einmal aktualisieren') }}</button>
+  </form>
+</header>
+
+<section class="metric-grid three">
+  <article class="metric-card"><span>{{ t('Aktive Quellen') }}</span><strong>{{ stats.active }}</strong><small>{{ t('von {total} eingerichtet', total=stats.total) }}</small></article>
+  <article class="metric-card"><span>{{ t('Letzter Suchlauf') }}</span><strong class="text-value">{{ stats.last_run }}</strong><small>{{ stats.last_run_detail }}</small></article>
+  <article class="metric-card"><span>{{ t('Gespeicherte Stellen') }}</span><strong>{{ stats.jobs }}</strong><small>{{ t('quellenübergreifend bereinigt') }}</small></article>
+</section>
+
+<div class="tab-bar source-tabs" role="tablist" aria-label="{{ t('Quellenarten') }}">
+  <button role="tab" aria-selected="{{ 'false' if crawl_tab_active else 'true' }}" aria-controls="source-api-panel" id="tab-source-api">{{ t('API und Feeds') }}</button>
+  <button role="tab" aria-selected="{{ 'true' if crawl_tab_active else 'false' }}" aria-controls="source-crawl-panel" id="tab-source-crawl">{{ t('Crawling') }}</button>
+</div>
+
+<section class="source-tab-panel" id="source-api-panel" role="tabpanel" aria-labelledby="tab-source-api" {% if crawl_tab_active %}hidden{% endif %}>
+  {% if not effective_api_access %}
+  <div class="notice warning prominent" role="status"><span aria-hidden="true">!</span><div><strong>{{ t('API-Abrufe sind deaktiviert') }}</strong><p>{{ t('Die kostenlosen APIs und Feeds werden erst abgerufen, wenn der Serverzugriff und der API-Schalter in den Einstellungen aktiv sind.') }}</p></div></div>
+  {% else %}
+  <div class="notice success"><strong>{{ t('API-Abrufe sind freigegeben.') }}</strong><p>{{ t('Öffentliche APIs und Feeds dürfen automatisch und manuell aktualisiert werden.') }}</p></div>
+  {% endif %}
+
+  <section class="card source-table-card" aria-labelledby="api-sources-title">
+    <div class="card-header"><div><p class="eyebrow">{{ t('API und Feeds') }}</p><h2 id="api-sources-title">{{ t('Quellenstatus') }}</h2></div></div>
+    <div class="table-wrap"><table><thead><tr><th>{{ t('Quelle') }}</th><th>{{ t('Verfahren') }}</th><th>{{ t('Status') }}</th><th>{{ t('Letzte Prüfung') }}</th><th>{{ t('Gespeicherte Stellen') }}</th></tr></thead><tbody>
+      {% for source in api_sources %}
+      <tr><td><div class="source-name"><span class="source-mark" aria-hidden="true">{{ source.initial }}</span><div><strong>{{ source.name }}</strong><small>{{ source.description }}</small></div></div></td><td>{{ source.method }}</td><td><span class="status-pill {{ source.status_class }}"><span aria-hidden="true"></span>{{ source.status }}</span></td><td>{{ source.checked_label }}</td><td><strong>{{ source.job_count }}</strong> {{ t('Stelle') if source.job_count == 1 else t('Stellen') }}</td></tr>
+      {% else %}
+      <tr><td colspan="5"><div class="empty-inline">{{ t('Keine API- oder Feed-Quellen konfiguriert.') }}</div></td></tr>
+      {% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section class="card source-config-card">
+    <div class="card-header"><div><p class="eyebrow">{{ t('Direkte Arbeitgeberquellen') }}</p><h2>{{ t('Öffentlichen Arbeitgeber-Feed ergänzen') }}</h2></div></div>
+    <p>{{ t('Trage die Board-Kennung oder Karriere-URL eines Arbeitgebers ein. Unterstützt werden Greenhouse, Lever, Ashby, SmartRecruiters, Personio und weitere öffentliche Karriereplattformen. Das Speichern ruft noch keine Daten ab.') }}</p>
+    <form method="post" action="{{ request.url_for('public_board_add') }}" class="form-grid two-column">
+      <div><label for="board-provider">{{ t('Anbieter') }}</label><select id="board-provider" name="provider" required><option value="greenhouse">Greenhouse</option><option value="lever">Lever</option><option value="ashby">Ashby</option><option value="smartrecruiters">SmartRecruiters</option><option value="personio">Personio</option><option value="join">JOIN</option><option value="softgarden">softgarden</option><option value="successfactors">SAP SuccessFactors</option><option value="workday">Workday</option><option value="workable">Workable</option><option value="recruitee">Recruitee</option><option value="teamtailor">Teamtailor</option><option value="icims">iCIMS</option><option value="oracle">Oracle Recruiting Cloud</option><option value="phenom">Phenom</option><option value="radancy">Radancy</option><option value="beesite">BeeSite</option></select></div>
+      <div><label for="board-value">{{ t('Board-Kennung oder Karriere-URL') }}</label><input id="board-value" type="text" name="board" required maxlength="1000" placeholder="https://jobs.example-provider.com/acme"></div>
+      <div><label for="board-company">{{ t('Arbeitgeber (optional)') }}</label><input id="board-company" type="text" name="company" maxlength="200" autocomplete="organization"></div>
+      <button class="button secondary" type="submit">{{ t('Feed speichern') }}</button>
+    </form>
+    {% for source in api_sources if source.boards %}
+    <div class="configured-source-list"><h3>{{ source.name }}</h3><ul>{% for board in source.boards %}<li><strong>{{ board.company or board.identifier }}</strong>{% if board.company %} <small>{{ board.identifier }}</small>{% endif %}</li>{% endfor %}</ul></div>
+    {% endfor %}
+  </section>
+</section>
+
+<section class="source-tab-panel" id="source-crawl-panel" role="tabpanel" aria-labelledby="tab-source-crawl" {% if not crawl_tab_active %}hidden{% endif %}>
+  {% if not effective_firecrawl %}
+  <div class="notice warning prominent" role="status"><span aria-hidden="true">!</span><div><strong>{{ t('Firecrawl ist gesperrt.') }}</strong><p>{{ t('Webseiten werden erst abgerufen, wenn die Server- und Anwendungsfreigaben für Firecrawl aktiv sind.') }}</p></div></div>
+  {% else %}
+  <div class="notice success"><strong>{{ t('Firecrawl ist freigegeben.') }}</strong><p>{{ t('Firmenportale werden von ihren Startseiten gecrawlt; Jobportale werden innerhalb der freigegebenen Domains nach passenden Stellen durchsucht.') }}</p></div>
+  {% endif %}
+
+  <section class="card crawler-control-card" aria-labelledby="crawler-control-title">
+    <div class="card-header">
+      <div><p class="eyebrow">{{ t('Dauerbetrieb') }}</p><h2 id="crawler-control-title">{{ t('Live-Crawler steuern') }}</h2></div>
+      <span class="status-pill {{ crawler_control.status_class }}"><span aria-hidden="true"></span>{{ crawler_control.status }}</span>
+    </div>
+    {% if crawler_control.runtime_state == 'error' %}
+    <div class="notice danger" role="alert"><strong>{{ t('Letzter Crawlerlauf fehlgeschlagen.') }}</strong>{% if crawler_control.status_detail %}<p>{{ crawler_control.status_detail }}</p>{% endif %}</div>
+    {% elif crawler_control.runtime_state == 'limited' %}
+    <div class="notice warning" role="status"><strong>{{ t('Letzter Crawlerlauf teilweise fehlgeschlagen.') }}</strong>{% if crawler_control.status_detail %}<p>{{ crawler_control.status_detail }}</p>{% endif %}</div>
+    {% elif crawler_control.runtime_state == 'pending' and crawler_control.status != t('Vorbereitet') %}
+    <div class="notice warning" role="status">{{ t('Der Crawler ist freigegeben, wurde aber noch nicht erfolgreich ausgeführt.') }}</div>
+    {% endif %}
+    <form method="post" action="{{ request.url_for('firecrawl_toggle') }}" class="crawler-toggle-form">
+      <label class="switch-row">
+        <span><strong>{{ t('Dauerhaften Live-Crawler aktivieren') }}</strong><small>{{ t('Steuert alle konfigurierten Jobportale und Unternehmensseiten. Ein bereits laufender Durchgang wird sicher beendet.') }}</small></span>
+        <input type="checkbox" name="crawler_enabled" {% if crawler_switch_enabled %}checked{% endif %} {% if not deployment_crawling_allowed or not deployment_firecrawl_allowed %}disabled{% endif %}>
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+      <button class="button secondary" type="submit" {% if not deployment_crawling_allowed or not deployment_firecrawl_allowed %}disabled{% endif %}>{{ t('Crawler-Einstellung speichern') }}</button>
+    </form>
+  </section>
+
+  <section class="card source-table-card" aria-labelledby="crawl-sources-title">
+    <div class="card-header"><div><p class="eyebrow">{{ t('Crawling') }}</p><h2 id="crawl-sources-title">{{ t('Crawler-Status') }}</h2></div></div>
+    <div class="table-wrap"><table><thead><tr><th>{{ t('Quelle') }}</th><th>{{ t('Verfahren') }}</th><th>{{ t('Status') }}</th><th>{{ t('Letzte Prüfung') }}</th><th>{{ t('Gespeicherte Stellen') }}</th></tr></thead><tbody>
+      {% for source in crawl_sources %}
+      <tr>
+        <td><div class="source-name"><span class="source-mark" aria-hidden="true">{{ source.initial }}</span><div><strong>{{ source.name }}</strong><small>{{ source.description }}</small></div></div></td>
+        <td>{{ source.method }}</td>
+        <td><div class="source-status-detail"><span class="status-pill {{ source.status_class }}"><span aria-hidden="true"></span>{{ source.status }}</span><small>{{ source.status_detail }}</small></div></td>
+        <td>{{ source.checked_label }}</td>
+        <td><strong>{{ source.job_count }}</strong> {{ t('Stelle') if source.job_count == 1 else t('Stellen') }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5"><div class="empty-inline">{{ t('Noch kein Crawler eingerichtet.') }}</div></td></tr>
+      {% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section class="card crawl-target-card">
+    <div class="card-header"><div><p class="eyebrow">{{ t('Lokaler Crawler') }}</p><h2>{{ t('Crawl-Ziele') }}</h2></div><span class="completion-badge">{{ crawl_target_counts.all }}</span></div>
+    <div class="crawl-target-intro">
+      <p>{{ t('Haupt-Jobportale und konkrete Unternehmensseiten werden getrennt geführt. BA Jobsuche bleibt eine API-Quelle und wird nicht gecrawlt.') }}</p>
+      <form method="post" action="{{ request.url_for('firecrawl_target_add') }}" class="form-grid crawl-target-form">
+        <div><label for="firecrawl-kind">{{ t('Zielart') }}</label><select id="firecrawl-kind" name="target_kind" required><option value="job_portal">{{ t('Jobportal') }}</option><option value="company_site" selected>{{ t('Unternehmensseite') }}</option></select></div>
+        <div><label for="firecrawl-url">{{ t('Startadresse') }}</label><input id="firecrawl-url" type="url" name="url" required placeholder="https://example.com/careers/jobs"></div>
+        <button class="button secondary" type="submit">{{ t('Ziel speichern') }}</button>
+      </form>
+    </div>
+
+    <div class="crawl-target-toolbar" role="group" aria-label="{{ t('Crawl-Ziele filtern') }}" data-crawl-filters>
+      <button type="button" aria-pressed="true" data-crawl-filter="all">{{ t('Alle') }} <span>{{ crawl_target_counts.all }}</span></button>
+      <button type="button" aria-pressed="false" data-crawl-filter="job_portal">{{ t('Jobportale') }} <span>{{ crawl_target_counts.job_portal }}</span></button>
+      <button type="button" aria-pressed="false" data-crawl-filter="company_site">{{ t('Unternehmensseiten') }} <span>{{ crawl_target_counts.company_site }}</span></button>
+    </div>
+
+    <div class="crawl-target-list" data-crawl-target-list>
+      {% for target in crawl_targets %}
+      <article class="crawl-target-row" data-crawl-target="{{ target.target_kind }}">
+        <span class="source-mark" aria-hidden="true">{{ 'JP' if target.target_kind == 'job_portal' else 'UN' }}</span>
+        <div><strong>{{ target.label }}</strong><a href="{{ target.url }}" target="_blank" rel="noreferrer">{{ target.hostname }}</a><small>{{ target.url }}</small></div>
+        <div class="crawl-target-metrics">
+          <span><small>{{ t('Zuletzt gecrawlt') }}</small><strong>{{ target.last_crawled_label }}</strong></span>
+          <span><small>{{ t('Im letzten Crawl gefunden') }}</small><strong>{{ target.found_count }} {{ t('Stelle') if target.found_count == 1 else t('Stellen') }}</strong></span>
+        </div>
+        <span class="tag {{ 'accent' if target.target_kind == 'job_portal' else 'onsite' }}">{{ t('Jobportal') if target.target_kind == 'job_portal' else t('Unternehmensseite') }}</span>
+        <div class="crawl-target-status">
+          <div class="crawl-target-status-summary"><span class="status-pill {{ target.status_class }}"><span aria-hidden="true"></span>{{ target.status }}</span><p>{{ target.status_detail }}</p></div>
+          {% if target.errors %}
+          <details class="crawl-target-errors"><summary>{{ t('Exakte technische Fehler') }} <span>{{ target.errors|length }}</span></summary><ul>{% for error in target.errors[:2] %}<li>{% if error.document_url %}<span class="crawl-error-url">{{ error.document_url }}</span>{% endif %}<span>{{ error.message }}</span></li>{% endfor %}</ul></details>
+          {% endif %}
+        </div>
+      </article>
+      {% else %}
+      <div class="empty-inline" data-crawl-initial-empty>{{ t('Noch keine Crawl-Ziele konfiguriert.') }}</div>
+      {% endfor %}
+      <div class="empty-inline" data-crawl-filter-empty hidden>{{ t('Keine Crawl-Ziele in diesem Filter.') }}</div>
+    </div>
+  </section>
+
+  <section class="card explainer"><div aria-hidden="true">↻</div><div><h2>{{ t('So arbeitet die Quellensuche') }}</h2><p>{{ t('Der Jobradar nutzt kostenlose APIs und Feeds, wo immer sie verfügbar sind. Der lokale Firecrawl-Server ergänzt fehlende Karriereportale. Doppelte Anzeigen werden zusammengeführt, ihre Herkunft bleibt sichtbar.') }}</p></div></section>
+</section>
+{% endblock %}

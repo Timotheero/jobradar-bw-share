@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Verfügbarkeit prüfen') }} · GF-Jobradar{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="{{ t('Brotkrümelnavigation') }}"><a href="{{ back_url }}">{{ t('Zurück') }}</a><span aria-hidden="true">/</span><span aria-current="page">{{ t('Verfügbarkeit prüfen') }}</span></nav>
+
+<header class="page-header">
+  <p class="eyebrow">{{ t('Vor der Bewerbung') }}</p>
+  <h1>{{ t('Verfügbarkeit der Stellen') }}</h1>
+  <p class="lede">{{ t('Jobradar prüft die Originalanzeige, bevor eine Bewerbung geplant oder ein Entwurf erstellt wird.') }}</p>
+</header>
+
+{% if inactive %}
+<section class="card" aria-labelledby="inactive-title">
+  <div class="notice danger" role="alert"><strong id="inactive-title">{{ t('Nicht mehr verfügbar') }}</strong><p>{{ t('Diese Stellen wurden nicht fortgesetzt.') }}</p></div>
+  <ul class="reason-list">{% for job in inactive %}<li><span aria-hidden="true">×</span><strong>{{ job.title }}</strong>{% if job.employer %} · {{ job.employer }}{% endif %}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+{% if unverified %}
+<section class="card" aria-labelledby="unverified-title">
+  <div class="notice warning" role="alert"><strong id="unverified-title">{{ t('Prüfung nicht möglich') }}</strong><p>{{ t('Die Quelle war nicht erreichbar oder externe Abrufe sind deaktiviert. Bestätige ausdrücklich, wenn du trotzdem fortfahren möchtest.') }}</p></div>
+  <ul class="reason-list">{% for job in unverified %}<li><span aria-hidden="true">?</span><strong>{{ job.title }}</strong>{% if job.employer %} · {{ job.employer }}{% endif %}</li>{% endfor %}</ul>
+  {% if flow == 'drafts' %}
+  <form method="post" action="{{ action_url }}" class="stacked-detail-form">
+    <input type="hidden" name="mode" value="selected">
+    <input type="hidden" name="confirm_unverified" value="true">
+    {% for job_id in continue_job_ids %}<input type="hidden" name="job_ids" value="{{ job_id }}">{% endfor %}
+    <input type="hidden" name="limit" value="{{ continue_job_ids|length }}">
+    <button class="button primary" type="submit">{{ t('Trotz fehlender Bestätigung fortfahren') }}</button>
+  </form>
+  {% elif flow == 'status' %}
+  <form method="post" action="{{ action_url }}" class="stacked-detail-form">
+    <input type="hidden" name="status" value="{{ requested_status }}">
+    <input type="hidden" name="notes" value="{{ requested_notes }}">
+    <input type="hidden" name="confirm_unverified" value="true">
+    <button class="button primary" type="submit">{{ t('Trotz fehlender Bestätigung fortfahren') }}</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<a class="button secondary" href="{{ back_url }}">{{ t('Abbrechen und zurück') }}</a>
+{% endblock %}

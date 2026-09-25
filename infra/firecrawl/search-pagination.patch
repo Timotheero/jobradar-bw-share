@@ -1,0 +1,103 @@
+diff --git a/apps/api/src/controllers/v2/search.ts b/apps/api/src/controllers/v2/search.ts
+--- a/apps/api/src/controllers/v2/search.ts
++++ b/apps/api/src/controllers/v2/search.ts
+@@ -202,6 +202,7 @@ export async function searchController(
+       {
+         query: req.body.query,
+         limit: req.body.limit,
++        page: req.body.page,
+         tbs: req.body.tbs,
+         filter: req.body.filter,
+         lang: req.body.lang,
+diff --git a/apps/api/src/controllers/v2/types.ts b/apps/api/src/controllers/v2/types.ts
+--- a/apps/api/src/controllers/v2/types.ts
++++ b/apps/api/src/controllers/v2/types.ts
+@@ -1925,6 +1925,7 @@ export const searchRequestSchema = z
+   .strictObject({
+     query: z.string(),
+     limit: z.int().positive().finite().max(100).optional().prefault(10),
++    page: z.int().positive().finite().optional(),
+     tbs: z.string().optional(),
+     filter: z.string().optional(),
+     sources: z
+diff --git a/apps/api/src/search/execute.ts b/apps/api/src/search/execute.ts
+--- a/apps/api/src/search/execute.ts
++++ b/apps/api/src/search/execute.ts
+@@ -29,5 +29,6 @@ interface SearchOptions {
+   query: string;
+   limit: number;
++  page?: number;
+   tbs?: string;
+   filter?: string;
+   lang?: string;
+@@ -90,7 +91,8 @@ export async function executeSearch(
+     billing,
+   } = context;
+ 
+-  const num_results_buffer = Math.floor(limit * 2);
++  const num_results_buffer =
++    options.page === undefined ? Math.floor(limit * 2) : limit;
+ 
+   logger.info("Searching for results");
+ 
+@@ -107,6 +109,8 @@ export async function executeSearch(
+   const searchResponse = (await search({
+     query: searchQuery,
+     logger,
++    page: options.page,
++    pageSize: limit,
+     advanced: false,
+     num_results: num_results_buffer,
+     tbs: options.tbs,
+diff --git a/apps/api/src/search/v2/index.ts b/apps/api/src/search/v2/index.ts
+--- a/apps/api/src/search/v2/index.ts
++++ b/apps/api/src/search/v2/index.ts
+@@ -10,6 +10,8 @@ export async function search({
+   logger,
+   advanced = false,
+   num_results = 5,
++  page = undefined,
++  pageSize = undefined,
+   tbs = undefined,
+   filter = undefined,
+   lang = "en",
+@@ -25,6 +27,8 @@ export async function search({
+   logger: Logger;
+   advanced?: boolean;
+   num_results?: number;
++  page?: number;
++  pageSize?: number;
+   tbs?: string;
+   filter?: string;
+   lang?: string;
+@@ -57,6 +61,8 @@ export async function search({
+       logger.info("Using searxng search");
+       const results = await searxng_search(query, {
+         num_results,
++        page,
++        pageSize,
+         tbs,
+         filter,
+         lang,
+diff --git a/apps/api/src/search/v2/searxng.ts b/apps/api/src/search/v2/searxng.ts
+--- a/apps/api/src/search/v2/searxng.ts
++++ b/apps/api/src/search/v2/searxng.ts
+@@ -11,14 +11,17 @@ interface SearchOptions {
+   location?: string;
+   num_results: number;
+   page?: number;
++  pageSize?: number;
+ }
+ 
+ export async function searxng_search(
+   q: string,
+   options: SearchOptions,
+ ): Promise<SearchV2Response> {
+   const resultsPerPage = 20;
+   const requestedResults = Math.max(options.num_results, 0);
+-  const startPage = options.page ?? 1;
++  const resultWindowSize = Math.max(options.pageSize ?? requestedResults, 1);
++  const pagesPerWindow = Math.max(1, Math.ceil(resultWindowSize / resultsPerPage));
++  const startPage = 1 + ((options.page ?? 1) - 1) * pagesPerWindow;
+ 
+   const url = config.SEARXNG_ENDPOINT!;

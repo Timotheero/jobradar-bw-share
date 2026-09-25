@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Übersicht') }} · GF-Jobradar{% endblock %}
+{% block content %}
+<header class="page-header split-header">
+  <div>
+    <p class="eyebrow">{{ t('Guten Tag') }}{% if profile.first_name %}, {{ profile.first_name }}{% endif %}</p>
+    <h1>{{ t('Dein Jobradar auf einen Blick') }}</h1>
+    <p class="lede">{{ t('Deine besten Treffer und wichtigsten Kennzahlen auf einen Blick.') }}</p>
+  </div>
+  <a class="button secondary" href="{{ request.url_for('jobs') }}">{{ t('Alle Stellen ansehen') }}</a>
+</header>
+
+
+<section class="metric-grid" aria-label="{{ t('Zusammenfassung') }}">
+  <article class="metric-card"><span>{{ t('Neue Treffer') }}</span><strong>{{ stats.new_jobs }}</strong><small>{{ t('seit deinem letzten Besuch') }}</small></article>
+  <article class="metric-card"><span>{{ t('Starke Treffer') }}</span><strong>{{ stats.strong_matches }}</strong><small>{{ t('mit mindestens 80 % Aufgabennähe') }}</small></article>
+  <article class="metric-card"><span>{{ t('Vorgemerkt') }}</span><strong>{{ stats.saved_jobs }}</strong><small>{{ t('für deine engere Auswahl') }}</small></article>
+  <article class="metric-card"><span>{{ t('Bewerbungen') }}</span><strong>{{ stats.active_applications }}</strong><small>{{ t('noch nicht abgeschlossen') }}</small></article>
+</section>
+
+<div class="content-grid">
+  <section class="card" aria-labelledby="best-title">
+    <div class="card-header">
+      <div><p class="eyebrow">{{ t('Für dich ausgewählt') }}</p><h2 id="best-title">{{ t('Beste neue Treffer') }}</h2></div>
+      <a href="{{ request.url_for('jobs') }}">{{ t('Alle anzeigen') }}</a>
+    </div>
+    {% if best_jobs %}
+    <div class="job-list compact-list">
+      {% for job in best_jobs %}
+      <article class="job-row">
+        <div class="company-avatar" aria-hidden="true">{{ job.company_initials }}</div>
+        <div class="job-main">
+          <div class="job-heading"><h3><a href="{{ request.url_for('web_job_detail', job_id=job.id) }}">{{ job.title }}</a></h3><span class="score-badge">{{ job.role_score }} %</span></div>
+          <p>{{ job.company }} · {{ job.location }}</p>
+          <div class="tag-row"><span class="tag {{ job.workplace_class }}">{{ job.workplace }}</span><span class="tag">{{ job.employment }}</span>{% if job.is_new %}<span class="tag accent">{{ t('Neu') }}</span>{% endif %}</div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state small">
+      <span class="empty-icon" aria-hidden="true">◎</span>
+      <h3>{{ t('Noch keine Treffer') }}</h3>
+      <p>{{ t('Nach dem ersten Suchlauf erscheinen hier die passendsten Stellen.') }}</p>
+    </div>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}
